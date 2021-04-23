@@ -31,7 +31,7 @@ game.exe
 ```
 
 
-## Examples
+## Beispiele
 
 01.gif
 
