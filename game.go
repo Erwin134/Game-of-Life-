@@ -8,62 +8,63 @@ import (
 )
 
 type Feld struct {
-	brett         [][]bool
-	hoehe, breite int
+	s    [][]bool
+	w, h int
 }
 
-type Leben struct { // Speichert den nächsten schritt des Feldes
-	a, b          *Feld
-	hoehe, breite int
+func NewFeld(w, h int) *Feld { // erstellt ein 2d array mit bool werten
+	s := make([][]bool, h)
+	for i := range s {
+		s[i] = make([]bool, w)
+	}
+	return &Feld{s: s, w: w, h: h}
 }
 
-func (f *Feld) Set(w, h int, b bool) { // bekommt den "index" des Feldes und setzt ihn auf wahr oder falsch
-	f.brett[w][h] = b
+func (f *Feld) Set(x, y int, b bool) { // Set setzt die Zelle auf den entsprechenden Wert
+	f.s[y][x] = b
 }
 
-func (f *Feld) Next(x, y int) bool { //ermittelt die Nachbarzellen die am leben sind
-	alive := 0
+func (f *Feld) Amleben(x, y int) bool { // Amleben überprüft die Zelle am leben ist
+	x += f.w
+	x %= f.w
+	y += f.h
+	y %= f.h
+	return f.s[y][x]
+}
+
+func (f *Feld) Next(x, y int) bool { // Next überprüft ob die Zelle im nächsten schritt noch lebt
+	Amleben := 0 // Zähle die benachbarten Zellen die am Leben sind
 	for i := -1; i <= 1; i++ {
 		for j := -1; j <= 1; j++ {
-			if (j != 0 || i != 0) && f.AmLeben(x+i, y+j) {
-				alive++
+			if (j != 0 || i != 0) && f.Amleben(x+i, y+j) {
+				Amleben++
 			}
 		}
 	}
-	return alive == 3 || alive == 2 && f.AmLeben(x, y)
+	// Regeln des Spiels
+	return Amleben == 3 || Amleben == 2 && f.Amleben(x, y)
 }
 
-func (f *Feld) AmLeben(h, w int) bool { //
-	h += f.hoehe
-	h %= f.hoehe
-	w += f.breite
-	w %= f.breite
-	return f.brett[h][w]
-
+type Leben struct {
+	a, b *Feld
+	w, h int
 }
 
-func NeuesBrett(hoehe, breite int) *Feld { //erzeugt ein neues Feld mit bool Werten
-	brett := make([][]bool, hoehe)
-	for i := range brett {
-		brett[i] = make([]bool, breite)
-	}
-	return &Feld{brett: brett, breite: breite, hoehe: hoehe}
-}
-
-func NeuStart(hoehe, breite int) *Leben { //erstellt ein Brett mit einem zufälligen Muster
-	a := NeuesBrett(hoehe, breite) //ein viertel der Zellen sind am Leben
-	for i := 0; i < (hoehe * breite / 4); i++ {
-		a.Set(rand.Intn(hoehe), rand.Intn(breite), true)
+func NewLeben(w, h int) *Leben { //NewLeben startet das Spiel mit einem "random seed".
+	a := NewFeld(w, h)
+	for i := 0; i < (w * h / 4); i++ {
+		a.Set(rand.Intn(w), rand.Intn(h), true)
 	}
 	return &Leben{
-		a: a, b: NeuesBrett(hoehe, breite),
-		hoehe: hoehe, breite: breite,
+		a: a, b: NewFeld(w, h),
+		w: w, h: h,
 	}
 }
 
-func (l *Leben) Update() { // tauscht das aktive Feld mit dem neu generierten
-	for y := 0; y < l.hoehe; y++ {
-		for x := 0; x < l.breite; x++ {
+func (l *Leben) Update() {
+	// tauscht das Feld mit dem nächsten Schritt
+	for y := 0; y < l.h; y++ {
+		for x := 0; x < l.w; x++ {
 			l.b.Set(x, y, l.a.Next(x, y))
 		}
 	}
@@ -72,24 +73,24 @@ func (l *Leben) Update() { // tauscht das aktive Feld mit dem neu generierten
 
 func (l *Leben) String() string { // gibt das Feld als String wieder
 	var buf bytes.Buffer
-	for y := 0; y < l.hoehe; y++ {
-		for x := 0; x < l.breite; x++ {
+	for y := 0; y < l.h; y++ {
+		for x := 0; x < l.w; x++ {
 			b := byte(' ')
-			if l.a.AmLeben(x, y) {
+			if l.a.Amleben(x, y) {
 				b = '0'
 			}
 			buf.WriteByte(b)
 		}
-		buf.WriteByte(' ')
+		buf.WriteByte('\n')
 	}
 	return buf.String()
 }
 
 func main() {
-	ns := NeuStart(50, 10)
-	for i := 0; i < 50; i++ { // gibt die ersten 50. generationen wieder
-		ns.Update()
-		fmt.Printf("\x0c %s", ns) // printed das Feld
+	l := NewLeben(40, 15)
+	for i := 0; i < 50; i++ { // Gibt die ersten 50 Generationen wieder 
+		l.Update()
+		fmt.Print("\x0c %s", l) // printed das Feld 
 		time.Sleep(time.Second / 30)
 	}
 }
